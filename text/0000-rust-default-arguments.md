@@ -147,6 +147,6 @@ impl Person {
 ```
 
 This is the quickest to implement, but like the descriptor, does not remain
-source compatible when additional parameters are added to '''new'''.
+source compatible when additional parameters are added to ```new```.
 
 *No solution yet*.
