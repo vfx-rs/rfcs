@@ -4,8 +4,8 @@ C++ allows for the parameters of a function or method to contain default values.
 Rust does not support this.
 
 Default parameters allow for a function/method to provide at once:
-    * a simple interface with reduced control
-    * a verbose interface with greater control
+* a simple interface with reduced control
+* a verbose interface with greater control
 
 There are currently three prevalent patterns in the rust community that solve
 this problem.
