@@ -36,10 +36,10 @@ A descriptor might look like this:
 ```rust
 
 pub mod desc {
-    struct New<'a> {
-        name : &'a str,
-        height : Option<u32>,
-        weight: Option<u32>,
+    pub struct New<'a> {
+        pub name : &'a str,
+        pub height : Option<u32>,
+        pub weight: Option<u32>,
     }
 }
 
@@ -70,7 +70,7 @@ A builder might look like this:
 ```rust
 
 pub mod build {
-    struct New<'a> {
+    pub struct New<'a> {
         name : &'a str,
         height : u32,
         weight: u32,
