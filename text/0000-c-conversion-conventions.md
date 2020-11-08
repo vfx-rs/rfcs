@@ -72,7 +72,7 @@ void FOO_Bar_delete(FOO_Bar* self) {
 }
 ```
 
-## 2. opaquebytes
+## 2. opaquebytes and valutype
 Since the caller allocates the memory, these are constructed using placement new, with the caller passing in a pointer to the pre-allocated region. Destructing means calling the destructor explicitly and the caller is responsible for freeing the associated memory.
 ```c++
 // C++
@@ -90,29 +90,6 @@ FOO_Bar* FOO_Bar_ctor(FOO_Bar* self, int a) {
 
 void FOO_Bar_dtor(FOO_Bar* self) {
     to_cpp(self)->~Bar();
-}
-```
-
-## 3. valuetype
-Here the value is expected to be on the stack by default, so we just create one and `bit_cast<>` it to the C representation:
-```c++
-// C++
-namespace FOO {
-struct Bar {
-    Bar(int a);
-    ~Bar();
-} CPPMM_VALUETYPE;
-}
-
-// C
-FOO_Bar FOO_Bar_construct(int a) {
-    return bit_cast<FOO_Bar>(My::Bar(a));
-}
-
-void My_Bar_destruct(My_Bar self) {
-    // TODO: is this always guaranteed to work or might the compiler try and
-    // optimize this out? I don't *think* it would, but needs checking.
-    bit_cast<My::Bar>(self);
 }
 ```
 
@@ -170,7 +147,7 @@ FOO_Bar* FOO_Bar_new();
 FOO_Bar_delete(const FOO_Bar* self);
 ```
 
-### opaquebytes
+### opaquebytes and valuetype
 Use `ctor` and `dtor` - these are short, unlikely to clash, and describe exactly what's going on:
 ```c
 FOO_Bar* FOO_Bar_ctor(FOO_Bar* self);
@@ -187,12 +164,7 @@ FOO_Bar_dtor(FOO_Bar* self);
   <dd>These are extremely common in C++ interfaces so just asking for collisions</dd>
 </dl>
 
-### valuetype
-Use `construct` and `destruct`:
-```c
-FOO_Bar FOO_Bar_construct();
-FOO_Bar_destruct(FOO_Bar self);
-```
+
 
 ### Constructor overloads
 
@@ -269,4 +241,41 @@ class half {
 
 // C
 float Imath_half_to_float(const Imath_half* self);
+```
+
+# Miscellaneous conversion rules
+
+## Functions that return `std::string`
+
+### Option 1
+Add an output `char* buffer` and `int len` for the caller to provide pre-allocated storage for the string:
+```c++
+int OIIO_geterror(char* buffer, int len) {
+    std::string err = OIIO::geterror();
+    // copies maximum `len` chars to buffer and makes sure last character is
+    // always '\0'
+    safe_strcpy(buffer, err.c_str(), len);
+    // return the actual length of the original string
+    return err.size();
+}
+```
+This works well for things like error messages that are expected to be of a "reasonable" length, but what about something that could generate an arbitrarily big string (e.g. PTX generation)?
+
+### Option 2
+Create two functions, one that gets the length of the string, and one that copies over the actual data. In this model, the `len` function actually gets the string from C++ and stashes it in a thread_local for later retrieval:
+
+```c++
+thread_local std::string err;
+int OIIO_geterror_len() {
+    err = OIIO::geterror();
+    return err.size();
+}
+
+int OIIO_geterror(char* buffer, int len) {
+    // copies maximum `len` chars to buffer and makes sure last character is
+    // always '\0'
+    safe_strcpy(buffer, err.c_str(), len);
+    // return the actual length of the original string
+    return err.size();
+}
 ```
